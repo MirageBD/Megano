@@ -1,0 +1,10 @@
+MEMORY
+{
+	RAM:		start=$2000, size=$d800;
+}
+
+SEGMENTS
+{
+	BASIC:			load=RAM, start=$2000;
+	COPYLOADER:		load=RAM, start=$2041;		# 2040 + 1 because file loads at $2001
+}
