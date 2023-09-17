@@ -15,16 +15,16 @@ mpPlaySample
 		bmi midC
 
 highC
-		lda #<.loword($20000+36568+22084)
+		lda #<.loword(samples+36568+22084)
 		sta $d72a,x										; CHXCURADDRL
-		lda #>.loword($20000+36568+22084)
+		lda #>.loword(samples+36568+22084)
 		sta $d72b,x										; CHXCURADDRC
-		lda #<.hiword($20000+36568+22084)
+		lda #<.hiword(samples+36568+22084)
 		sta $d72c,x										; CHXCURADDRM
 
-		lda #<($20000+36568+22084+28956)
+		lda #<(samples+36568+22084+28956)
 		sta $d727,x										; CHXTADDRL
-		lda #<($20000+36568+22084+28956)
+		lda #<(samples+36568+22084+28956)
 		sta $d728,x										; CHXTADDRM
 
 		jmp endC
@@ -33,31 +33,31 @@ midC
 		cmp #$0c
 		bmi lowC
 
-		lda #<.loword($20000+36568)
+		lda #<.loword(samples+36568)
 		sta $d72a,x										; CHXCURADDRL
-		lda #>.loword($20000+36568)
+		lda #>.loword(samples+36568)
 		sta $d72b,x										; CHXCURADDRC
-		lda #<.hiword($20000+36568)
+		lda #<.hiword(samples+36568)
 		sta $d72c,x										; CHXCURADDRM
 
-		lda #<($20000+36568+22084)
+		lda #<(samples+36568+22084)
 		sta $d727,x										; CHXTADDRL
-		lda #>($20000+36568+22084)
+		lda #>(samples+36568+22084)
 		sta $d728,x										; CHXTADDRM
 
 		jmp endC
 
 lowC
-		lda #<.loword($20000)
+		lda #<.loword(samples)
 		sta $d72a,x										; CHXCURADDRL
-		lda #>.loword($20000)
+		lda #>.loword(samples)
 		sta $d72b,x										; CHXCURADDRC
-		lda #<.hiword($20000)
+		lda #<.hiword(samples)
 		sta $d72c,x										; CHXCURADDRM
 
-		lda #<($20000+36568)
+		lda #<(samples+36568)
 		sta $d727,x										; CHXTADDRL
-		lda #>($20000+36568)
+		lda #>(samples+36568)
 		sta $d728,x										; CHXTADDRM
 
 endC

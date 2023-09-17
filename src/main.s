@@ -1,8 +1,10 @@
-.define keys $4000
-.define screen1 $c000
-.define pal $5000
+.define keys		$4000
+.define screen1		$c000
+.define pal			$5000
 
-.define emptychar $0800
+.define emptychar	$0800
+
+.define samples		$20000
 
 ; ----------------------------------------------------------------------------------------------------
 
