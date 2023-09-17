@@ -48,7 +48,7 @@ OBJS = $(EXE_DIR)/boot.o $(EXE_DIR)/main.o
 # -----------------------------------------------------------------------------
 
 $(BIN_DIR)/bitmap_chars0.bin: $(BIN_DIR)/bitmap.bin
-	$(MC) $< m1:1 d1:0 cl1:10000 rc1:0
+	$(MC) $< cm1:1 d1:0 cl1:6000 rc1:1
 
 $(EXE_DIR)/boot.o: $(SRC_DIR)/boot.s $(SRC_DIR)/main.s $(SRC_DIR)/modplay.s $(SRC_DIR)/loader.s Makefile Linkfile
 	$(AS) $(ASFLAGS) -o $@ $<
