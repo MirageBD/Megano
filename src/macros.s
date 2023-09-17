@@ -1,4 +1,19 @@
 .define COLOR_RAM $ff80000
+.define SAFE_COLOR_RAM COLOR_RAM+2048
+.define SAFE_COLOR_RAM_PLUS_ONE COLOR_RAM+2048+1
+
+.define COLOR_RAM_FREESPACE COLOR_RAM+2048+8192
+
+.macro QSTORE32 num, address
+		lda #<.loword(num)
+		ldx #>.loword(num)
+		ldy #<.hiword(num)
+		ldz #>.hiword(num)
+		sta address+0
+		stx address+1
+		sty address+2
+		stz address+3
+.endmacro		
 
 .macro DMA_RUN_JOB jobPointer
 		lda #(jobPointer & $ff0000) >> 16
@@ -6,6 +21,19 @@
 		sta $d704
 		lda #>jobPointer
 		sta $d701
+		lda #<jobPointer
+		sta $d705
+.endmacro
+
+.macro DMA_INIT_FAST_JOB jobPointer
+		lda #(jobPointer & $ff0000) >> 16
+		sta $d702
+		sta $d704
+		lda #>jobPointer
+		sta $d701
+.endmacro
+
+.macro DMA_RUN_JOB_FAST jobPointer
 		lda #<jobPointer
 		sta $d705
 .endmacro
@@ -35,6 +63,129 @@
 	.if chain
 		.word $0000
 	.endif
+.endscope
+.endmacro
+
+.macro DMA_COPY_JOB source, destination, length, chain, backwards
+.scope
+	.byte $00 ; No more options
+
+	.if chain
+		.byte $04 ; Copy and chain
+	.else
+		.byte $00 ; Copy and last request
+	.endif
+
+	.if backwards
+		.word length ; Size of Copy
+		.word (source + length - 1) & $ffff
+		.byte ((source + length - 1) >> 16) + $40
+		.word (destination + length - 1) & $ffff
+		.byte (((destination + length - 1) >> 16) & $0f) + $40
+	.else
+		.word length ; Size of Copy
+		.word (source) & $ffff
+		.byte ((source) >> 16)
+		.word (destination) & $ffff
+		.byte (((destination) >> 16) & $0f)
+	.endif
+
+	.if chain
+		.word $0000
+	.endif
+.endscope
+.endmacro
+
+.macro FLOPPY_FAST_LOAD_OLD addr, fname
+.scope
+			bra :+
+FileName	.byte .sprintf("%s", fname), 0
+:			lda #<.loword(addr)
+			sta fastload_address+0
+			lda #>.loword(addr)
+			sta fastload_address+1
+			lda #<.hiword(addr)
+			sta fastload_address+2
+			lda #>.hiword(addr)
+			sta fastload_address+3
+
+			ldx #<FileName
+			ldy #>FileName
+			jsr fl_set_filename
+
+			lda #$01										; Request fastload job
+			sta fastload_request
+			jsr fl_waiting
+.endscope
+.endmacro
+
+.macro FLOPPY_IFFL_FAST_LOAD_INIT fname
+.scope
+			bra :+
+FileName	.byte .sprintf("%s", fname), 0
+:			
+			ldx #<FileName
+			ldy #>FileName
+			jsr fl_set_filename
+
+			lda #$01										; Request fastload job
+			sta fastload_request
+			jsr fl_waiting
+.endscope
+.endmacro
+
+.macro FLOPPY_IFFL_FAST_LOAD
+.scope
+			lda fl_iffl_currentfile
+			asl
+			asl
+			asl
+			tax
+			lda fastload_iffl_start_address_and_size+0,x
+			sta fastload_address+0
+			sta dc_get_zp+0
+			lda fastload_iffl_start_address_and_size+1,x
+			sta fastload_address+1
+			sta dc_get_zp+1
+			lda fastload_iffl_start_address_and_size+2,x
+			sta fastload_address+2
+			sta dc_get_zp+2
+			lda fastload_iffl_start_address_and_size+3,x
+			sta fastload_address+3
+			sta dc_get_zp+3
+
+			lda fastload_iffl_start_address_and_size+4,x
+			sta fl_iffl_sizeremaining+0
+			lda fastload_iffl_start_address_and_size+5,x
+			sta fl_iffl_sizeremaining+1
+			lda fastload_iffl_start_address_and_size+6,x
+			sta fl_iffl_sizeremaining+2
+			lda fastload_iffl_start_address_and_size+7,x
+			sta fl_iffl_sizeremaining+3
+
+			lda #$07
+			sta fastload_request
+			inc fl_iffl_currentfile
+			jsr fl_waiting
+			jsr decrunch
+.endscope
+.endmacro
+
+.macro FLOPPY_FAST_LOAD addr, char1, char2
+.scope
+			lda #<.loword(addr)
+			sta fastload_address+0
+			lda #>.loword(addr)
+			sta fastload_address+1
+			lda #<.hiword(addr)
+			sta fastload_address+2
+			lda #>.hiword(addr)
+			sta fastload_address+3
+
+			ldx #char1
+			ldy #char2
+			jsr fl_find_dir_entry
+			jsr fl_waiting
 .endscope
 .endmacro
 

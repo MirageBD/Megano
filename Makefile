@@ -45,28 +45,52 @@ default: all
 
 OBJS = $(EXE_DIR)/boot.o $(EXE_DIR)/main.o
 
+BINFILES  = $(BIN_DIR)/bitmap_chars0.bin
+BINFILES += $(BIN_DIR)/bitmap_screen0.bin
+BINFILES += $(BIN_DIR)/bitmap_pal0.bin
+BINFILES += $(BIN_DIR)/samples.bin
+
+BINFILESMC  = $(BIN_DIR)/bitmap_chars0.bin.addr.mc
+BINFILESMC += $(BIN_DIR)/bitmap_screen0.bin.addr.mc
+BINFILESMC += $(BIN_DIR)/bitmap_pal0.bin.addr.mc
+BINFILESMC += $(BIN_DIR)/samples.bin.addr.mc
+
 # -----------------------------------------------------------------------------
 
 $(BIN_DIR)/bitmap_chars0.bin: $(BIN_DIR)/bitmap.bin
 	$(MC) $< cm1:1 d1:0 cl1:6000 rc1:1
 
-$(EXE_DIR)/boot.o: $(SRC_DIR)/boot.s $(SRC_DIR)/main.s $(SRC_DIR)/modplay.s $(SRC_DIR)/loader.s Makefile Linkfile
+$(EXE_DIR)/boot.o:	$(SRC_DIR)/boot.s \
+					$(SRC_DIR)/main.s \
+					$(SRC_DIR)/irqload.s \
+					$(SRC_DIR)/decruncher.s \
+					$(SRC_DIR)/macros.s \
+					$(SRC_DIR)/modplay.s \
+					Makefile Linkfile
 	$(AS) $(ASFLAGS) -o $@ $<
 
-$(EXE_DIR)/boot.prg: $(EXE_DIR)/boot.o Linkfile
-	$(LD) -Ln $(EXE_DIR)/boot.maptemp --dbgfile $(EXE_DIR)/boot.dbg -C Linkfile -o $@ $(EXE_DIR)/boot.o
-	$(SED) $(CONVERTVICEMAP) < $(EXE_DIR)/boot.maptemp > boot.map
-	$(SED) $(CONVERTVICEMAP) < $(EXE_DIR)/boot.maptemp > boot.list
+$(BIN_DIR)/alldata.bin: $(BINFILES)
+	$(MEGAADDRESS) $(BIN_DIR)/bitmap_chars0.bin      00006000
+	$(MEGAADDRESS) $(BIN_DIR)/bitmap_screen0.bin     00004000
+	$(MEGAADDRESS) $(BIN_DIR)/bitmap_pal0.bin        00005000
+	$(MEGAADDRESS) $(BIN_DIR)/samples.bin            00020000
+	$(MEGACRUNCH) $(BIN_DIR)/bitmap_chars0.bin.addr
+	$(MEGACRUNCH) $(BIN_DIR)/bitmap_screen0.bin.addr
+	$(MEGACRUNCH) $(BIN_DIR)/bitmap_pal0.bin.addr
+	$(MEGACRUNCH) $(BIN_DIR)/samples.bin.addr
+	$(MEGAIFFL) $(BINFILESMC) $(BIN_DIR)/alldata.bin
 
-$(EXE_DIR)/megano65.d81: $(EXE_DIR)/boot.prg $(BIN_DIR)/bitmap_chars0.bin $(BIN_DIR)/bitmap_screen0.bin $(BIN_DIR)/bitmap_pal0.bin
+$(EXE_DIR)/boot.prg.addr.mc: $(BINFILES) $(EXE_DIR)/boot.o Linkfile
+	$(LD) -Ln $(EXE_DIR)/boot.maptemp --dbgfile $(EXE_DIR)/boot.dbg -C Linkfile -o $(EXE_DIR)/boot.prg $(EXE_DIR)/boot.o
+	$(MEGAADDRESS) $(EXE_DIR)/boot.prg 00002100
+	$(MEGACRUNCH) -e 00002100 $(EXE_DIR)/boot.prg.addr
+
+$(EXE_DIR)/megano65.d81: $(EXE_DIR)/boot.prg.addr.mc $(BIN_DIR)/alldata.bin
 	$(RM) $@
 	$(CC1541) -n "megano65" -i " 2022" -d 19 -v\
 	 \
-	 -f "megano65" -w $(EXE_DIR)/boot.prg \
-	 -f "1" -w $(BIN_DIR)/bitmap_chars0.bin \
-	 -f "2" -w $(BIN_DIR)/bitmap_screen0.bin \
-	 -f "3" -w $(BIN_DIR)/bitmap_pal0.bin \
-	 -f "4" -w $(BIN_DIR)/samples.bin \
+	 -f "megano65" -w $(EXE_DIR)/boot.prg.addr.mc \
+	 -f "megano65.ifflcrc" -w $(BIN_DIR)/alldata.bin \
 	$@
 
 # -----------------------------------------------------------------------------
@@ -76,7 +100,7 @@ run: $(EXE_DIR)/megano65.d81
 ifeq ($(megabuild), 1)
 
 	$(MEGAFTP) -c "put D:\Mega\megano65\exe\megano65.d81 megano65.d81" -c "quit"
-	$(EL) -m MEGANO65.D81 -r $(EXE_DIR)/boot.prg.addr
+	$(EL) -m MEGANO65.D81 -r $(EXE_DIR)/boot.prg.addr.mc
 ifeq ($(attachdebugger), 1)
 	m65dbg --device /dev/ttyS2
 endif

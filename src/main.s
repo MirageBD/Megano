@@ -1,21 +1,79 @@
-main
+.define keys $4000
+.define screen1 $c000
+.define pal $5000
 
-		;SD_LOAD_CHIPRAM $6000, "bcharset.bin"
-		;SD_LOAD_CHIPRAM $3000, "bscreen.bin"
-		;SD_LOAD_CHIPRAM $4000, "bpal.bin"
-		;SD_LOAD_CHIPRAM $20000, "samples.bin"
-
-		FLOPPY_LOAD $6000, "1"
-		FLOPPY_LOAD $3000, "2"
-		FLOPPY_LOAD $4000, "3"
-		FLOPPY_LOAD $20000, "4"
-
-.define keys $3000
-.define screen $c000
-
-.define emptychar $4400
+.define emptychar $0800
 
 ; ----------------------------------------------------------------------------------------------------
+
+.segment "MAIN"
+
+entry_main
+
+		sei
+
+		lda #$35
+		sta $01
+
+		lda #%10000000									; Clear bit 7 - HOTREG
+		trb $d05d
+
+		lda #$00										; unmap
+		tax
+		tay
+		taz
+		map
+		eom
+
+		lda #$47										; enable C65GS/VIC-IV IO registers
+		sta $d02f
+		lda #$53
+		sta $d02f
+		eom
+
+		lda #%10000000									; force PAL mode, because I can't be bothered with fixing it for NTSC
+		trb $d06f										; clear bit 7 for PAL ; trb $d06f 
+		;tsb $d06f										; set bit 7 for NTSC  ; tsb $d06f
+
+		lda #$41										; enable 40MHz
+		sta $00
+
+		;lda #$70										; Disable C65 rom protection using hypervisor trap (see mega65 manual)
+		;sta $d640
+		;eom
+
+		lda #%11111000									; unmap c65 roms $d030 by clearing bits 3-7
+		trb $d030
+
+		lda #$7f										; disable CIA interrupts
+		sta $dc0d
+		sta $dd0d
+		lda $dc0d
+		lda $dd0d
+
+		lda #$00										; disable IRQ raster interrupts because C65 uses raster interrupts in the ROM
+		sta $d01a
+
+		lda #$00
+		sta $d012
+		lda #<fastload_irq_handler
+		sta $fffe
+		lda #>fastload_irq_handler
+		sta $ffff
+
+		lda #$01										; ACK
+		sta $d01a
+
+		cli
+
+		jsr fl_init
+		jsr fl_waiting
+		FLOPPY_IFFL_FAST_LOAD_INIT "MEGANO65.IFFLCRC"
+		FLOPPY_IFFL_FAST_LOAD
+		FLOPPY_IFFL_FAST_LOAD
+		FLOPPY_IFFL_FAST_LOAD
+		FLOPPY_IFFL_FAST_LOAD
+		jsr fl_exit
 
 		sei
 		lda #$35
@@ -81,11 +139,11 @@ main
 		DMA_RUN_JOB clearcolorramjob
 		DMA_RUN_JOB clearscreenjob
 
-		lda #<$c000										; set pointer to screen ram
+		lda #<screen1										; set pointer to screen ram
 		sta $d060
-		lda #>$c000
+		lda #>screen1
 		sta $d061
-		lda #($c000 & $ff0000) >> 16
+		lda #(screen1 & $ff0000) >> 16
 		sta $d062
 		lda #$00
 		sta $d063
@@ -102,11 +160,11 @@ main
 		sta $d070
 
 		ldx #$00										; set charset palette
-:		lda $4000,x
+:		lda pal+0*$0100,x
 		sta $d100,x
-		lda $4100,x
+		lda pal+1*$0100,x
 		sta $d200,x
-		lda $4200,x
+		lda pal+2*$0100,x
 		sta $d300,x
 		inx
 		bne :-
@@ -525,10 +583,10 @@ drawkeyhalf
 		sta dkls1+2
 
 		clc
-		lda #<screen
+		lda #<screen1
 		adc screenoffs
 		sta dkld1+1
-		lda #>screen
+		lda #>screen1
 		adc #00
 		sta dkld1+2
 
@@ -558,10 +616,10 @@ drawkeyloop
 
 		ldx #$00
 
-dkls1	lda keys
-dkld1	sta screen
+dkls1	lda keys+0
+dkld1	sta screen1+0
 dkls2	lda keys+1
-dkld2	sta screen+1
+dkld2	sta screen1+1
 
 		jsr copykeyincsrc
 		jsr copykeyincdst
@@ -705,7 +763,7 @@ clearcolorramjob
 																;       6 MINTERM  SA,-DA bit
 																;       7 MINTERM  SA, DA bit
 
-				.word 40*25										; Count LSB + Count MSB
+				.word 40*26										; Count LSB + Count MSB
 
 				.word $0000										; this is normally the source addres, but contains the fill value now
 				.byte $00										; source bank (ignored)
@@ -735,7 +793,7 @@ clearcolorramjob
 																;       6 MINTERM  SA,-DA bit
 																;       7 MINTERM  SA, DA bit
 
-				.word 40*25										; Count LSB + Count MSB
+				.word 40*26										; Count LSB + Count MSB
 
 				.word $0000										; this is normally the source addres, but contains the fill value now
 				.byte $00										; source bank (ignored)
@@ -754,7 +812,7 @@ clearcolorramjob
 clearscreenjob
 				.byte $0a										; Request format (f018a = 11 bytes (Command MSB is $00), f018b is 12 bytes (Extra Command MSB))
 				.byte $80, $00									; source megabyte   ($0000000 >> 20) ($00 is  chip ram)
-				.byte $81, screen >> 20							; dest megabyte   ($0000000 >> 20) ($00 is  chip ram)
+				.byte $81, screen1 >> 20						; dest megabyte   ($0000000 >> 20) ($00 is  chip ram)
 				.byte $84, $00									; Destination skip rate (256ths of bytes)
 				.byte $85, $02									; Destination skip rate (whole bytes)
 
@@ -774,13 +832,13 @@ clearscreenjob
 																;       6 MINTERM  SA,-DA bit
 																;       7 MINTERM  SA, DA bit
 
-				.word 40*25										; Count LSB + Count MSB
+				.word 40*26										; Count LSB + Count MSB
 
 				.word <(emptychar/64)									; this is normally the source addres, but contains the fill value now
 				.byte $00										; source bank (ignored)
 
-				.word screen & $ffff							; Destination Address LSB + Destination Address MSB
-				.byte ((screen >> 16) & $0f)					; Destination Address BANK and FLAGS (copy to rbBaseMem)
+				.word screen1 & $ffff							; Destination Address LSB + Destination Address MSB
+				.byte ((screen1 >> 16) & $0f)					; Destination Address BANK and FLAGS (copy to rbBaseMem)
 																;     0–3 Memory BANK within the selected MB (0-15)
 																;       4 HOLD,      i.e., do not change the address
 																;       5 MODULO,    i.e., apply the MODULO field to wraparound within a limited memory space
@@ -804,13 +862,13 @@ clearscreenjob
 																;       6 MINTERM  SA,-DA bit
 																;       7 MINTERM  SA, DA bit
 
-				.word 40*25										; Count LSB + Count MSB
+				.word 40*26										; Count LSB + Count MSB
 
 				.word >(emptychar/64)							; this is normally the source addres, but contains the fill value now
 				.byte $00										; source bank (ignored)
 
-				.word (screen+1) & $ffff						; Destination Address LSB + Destination Address MSB
-				.byte (((screen+1) >> 16) & $0f)				; Destination Address BANK and FLAGS (copy to rbBaseMem)
+				.word (screen1+1) & $ffff						; Destination Address LSB + Destination Address MSB
+				.byte (((screen1+1) >> 16) & $0f)				; Destination Address BANK and FLAGS (copy to rbBaseMem)
 																;     0–3 Memory BANK within the selected MB (0-15)
 																;       4 HOLD,      i.e., do not change the address
 																;       5 MODULO,    i.e., apply the MODULO field to wraparound within a limited memory space
