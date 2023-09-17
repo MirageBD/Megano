@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
 
-megabuild		= 0
+megabuild		= 1
 attachdebugger	= 0
 
 # -----------------------------------------------------------------------------
@@ -98,8 +98,7 @@ $(EXE_DIR)/megano65.d81: $(EXE_DIR)/boot.prg.addr.mc $(BIN_DIR)/alldata.bin
 run: $(EXE_DIR)/megano65.d81
 
 ifeq ($(megabuild), 1)
-
-	$(MEGAFTP) -c "put D:\Mega\megano65\exe\megano65.d81 megano65.d81" -c "quit"
+	$(MEGAFTP) -c "put D:\Mega\megano\exe\megano65.d81 megano65.d81" -c "quit"
 	$(EL) -m MEGANO65.D81 -r $(EXE_DIR)/boot.prg.addr.mc
 ifeq ($(attachdebugger), 1)
 	m65dbg --device /dev/ttyS2
