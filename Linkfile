@@ -6,4 +6,7 @@ MEMORY
 SEGMENTS
 {
 	MAIN:			load=RAM, start=$2100;
+	SCREEN:			load=RAM, start=$4000;
+	PAL:			load=RAM, start=$5000;
+	CHARS:			load=RAM, start=$6000;
 }

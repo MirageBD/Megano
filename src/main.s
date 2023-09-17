@@ -8,6 +8,15 @@
 
 ; ----------------------------------------------------------------------------------------------------
 
+.segment "CHARS"
+	.incbin "../bin/bitmap_chars0.bin"
+
+.segment "SCREEN"
+	.incbin "../bin/bitmap_screen0.bin"
+
+.segment "PAL"
+	.incbin "../bin/bitmap_pal0.bin"
+
 .segment "MAIN"
 
 entry_main
@@ -71,10 +80,7 @@ entry_main
 		jsr fl_init
 		jsr fl_waiting
 		FLOPPY_IFFL_FAST_LOAD_INIT "MEGANO65.IFFLCRC"
-		FLOPPY_IFFL_FAST_LOAD
-		FLOPPY_IFFL_FAST_LOAD
-		FLOPPY_IFFL_FAST_LOAD
-		FLOPPY_IFFL_FAST_LOAD
+		FLOPPY_IFFL_FAST_LOAD ; samples.bin
 		jsr fl_exit
 
 		sei

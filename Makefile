@@ -50,10 +50,7 @@ BINFILES += $(BIN_DIR)/bitmap_screen0.bin
 BINFILES += $(BIN_DIR)/bitmap_pal0.bin
 BINFILES += $(BIN_DIR)/samples.bin
 
-BINFILESMC  = $(BIN_DIR)/bitmap_chars0.bin.addr.mc
-BINFILESMC += $(BIN_DIR)/bitmap_screen0.bin.addr.mc
-BINFILESMC += $(BIN_DIR)/bitmap_pal0.bin.addr.mc
-BINFILESMC += $(BIN_DIR)/samples.bin.addr.mc
+BINFILESMC = $(BIN_DIR)/samples.bin.addr.mc
 
 # -----------------------------------------------------------------------------
 
@@ -70,13 +67,7 @@ $(EXE_DIR)/boot.o:	$(SRC_DIR)/boot.s \
 	$(AS) $(ASFLAGS) -o $@ $<
 
 $(BIN_DIR)/alldata.bin: $(BINFILES)
-	$(MEGAADDRESS) $(BIN_DIR)/bitmap_chars0.bin      00006000
-	$(MEGAADDRESS) $(BIN_DIR)/bitmap_screen0.bin     00004000
-	$(MEGAADDRESS) $(BIN_DIR)/bitmap_pal0.bin        00005000
 	$(MEGAADDRESS) $(BIN_DIR)/samples.bin            00020000
-	$(MEGACRUNCH) $(BIN_DIR)/bitmap_chars0.bin.addr
-	$(MEGACRUNCH) $(BIN_DIR)/bitmap_screen0.bin.addr
-	$(MEGACRUNCH) $(BIN_DIR)/bitmap_pal0.bin.addr
 	$(MEGACRUNCH) $(BIN_DIR)/samples.bin.addr
 	$(MEGAIFFL) $(BINFILESMC) $(BIN_DIR)/alldata.bin
 
